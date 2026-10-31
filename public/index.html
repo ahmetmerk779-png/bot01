@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Multi-Bot Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6 text-center text-indigo-400">Minecraft Bot Dashboard</h1>
+        
+        <!-- Kontrol Paneli -->
+        <div class="bg-slate-800 p-6 rounded-xl shadow-lg mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">Sunucu IP / Host</label>
+                <input type="text" id="host" value="localhost" class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Port</label>
+                <input type="number" id="port" value="25565" class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Sürüm (Örn: 1.20.4, boş bırakırsan oto algılar)</label>
+                <input type="text" id="version" placeholder="Otomatik" class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Bot Sayısı</label>
+                <input type="number" id="count" value="5" min="1" max="100" class="w-full bg-slate-700 border border-slate-600 rounded p-2 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="md:col-span-2 flex gap-4 mt-2">
+                <button id="spawnBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 font-bold py-2 px-4 rounded transition">Botları Gönder</button>
+                <button id="stopAllBtn" class="bg-red-600 hover:bg-red-700 font-bold py-2 px-4 rounded transition">Tümünü Kapat</button>
+            </div>
+        </div>
+
+        <!-- Aktif Botlar Listesi -->
+        <div class="bg-slate-800 p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 flex justify-between items-center">
+                <span>Aktif Botlar (<span id="botCount">0</span>)</span>
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400">
+                            <th class="p-3">Bot Adı</th>
+                            <th class="p-3">Durum</th>
+                            <th class="p-3 text-right">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="botTableBody">
+                        <tr>
+                            <td colspan="3" class="p-4 text-center text-slate-500">Henüz bot aktif değil.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+
+        const hostInput = document.getElementById('host');
+        const portInput = document.getElementById('port');
+        const versionInput = document.getElementById('version');
+        const countInput = document.getElementById('count');
+        const spawnBtn = document.getElementById('spawnBtn');
+        const stopAllBtn = document.getElementById('stopAllBtn');
+        const botTableBody = document.getElementById('botTableBody');
+        const botCountSpan = document.getElementById('botCount');
+
+        spawnBtn.addEventListener('click', () => {
+            socket.emit('spawn-bots', {
+                host: hostInput.value,
+                port: portInput.value,
+                version: versionInput.value,
+                count: countInput.value
+            });
+        });
+
+        stopAllBtn.addEventListener('click', () => {
+            socket.emit('disconnect-all');
+        });
+
+        function disconnectBot(id) {
+            socket.emit('disconnect-bot', id);
+        }
+
+        socket.on('update-bots', (bots) => {
+            botCountSpan.textContent = bots.length;
+            if (bots.length === 0) {
+                botTableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">Henüz bot aktif değil.</td></tr>`;
+                return;
+            }
+
+            botTableBody.innerHTML = bots.map(b => `
+                <tr class="border-b border-slate-700/50 hover:bg-slate-700/20">
+                    <td class="p-3 font-medium">${b.username}</td>
+                    <td class="p-3 text-sm text-indigo-300">${b.status}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="disconnectBot('${b.id}')" class="bg-rose-600/80 hover:bg-rose-600 text-xs px-3 py-1 rounded transition">Kaldır</button>
+                    </td>
+                </tr>
+            `).join('');
+        });
+    </script>
+</body>
+</html>
